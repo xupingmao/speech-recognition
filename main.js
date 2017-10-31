@@ -1,4 +1,4 @@
-/* Copyright 2013 Chris Wilson
+/* Copyright 2013 Chris Wilson, 2017 xupingmao
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -167,6 +167,7 @@ function updateDiffAnalysers(time) {
     {
         var numBars = Math.round(canvasWidth / SPACING);
         var freqByteData = new Uint8Array(analyserNode.frequencyBinCount);
+        var activeCount = 0;
 
         analyserNode.getByteFrequencyData(freqByteData); 
 
@@ -193,21 +194,24 @@ function updateDiffAnalysers(time) {
             // 放大3倍
             magnitude = (magnitude - lastFreqByteData[i]);
 
-            if (Math.abs(magnitude) < DIFF_THRESHOLD) {
-                continue;
+            if (Math.abs(magnitude) > DIFF_THRESHOLD) {
+                diffAnalyserContext.font="20px Georgia";
+                diffAnalyserContext.fillText(parseInt(magnitude), i*SPACING, 20);
+                activeCount++;
             } 
 
             // 调整高度，差值可能为负
             magnitude += 100;
-
-            diffAnalyserContext.font="20px Georgia";
-            diffAnalyserContext.fillText(parseInt(magnitude), i*SPACING, 20);
-
             // magnitude += 100;
             diffAnalyserContext.fillStyle = "hsl( " + Math.round((i*360)/numBars) + ", 100%, 50%)";
             diffAnalyserContext.fillRect(i * SPACING, canvasHeight, BAR_WIDTH, -magnitude);
         }
         // console.log(magnitudeList);
+
+        var element = document.getElementById("activeCount");
+        if (element) {
+            element.innerHTML = activeCount;
+        }
     }
     
 }
@@ -245,6 +249,7 @@ function gotStream(stream) {
     zeroGain.gain.value = 0.0;
     inputPoint.connect( zeroGain );
     zeroGain.connect( audioContext.destination );
+    // 更新分析器
     updateAnalysers();
 }
 
