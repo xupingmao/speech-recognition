@@ -32,7 +32,7 @@ var lastFreqByteData = null;
 // var SPACING = 3;
 var SPACING = 10;
 var BAR_WIDTH = 2;
-var DIFF_THRESHOLD = 3;
+var DIFF_THRESHOLD = 5;
 
 
 /* TODO:
@@ -105,7 +105,7 @@ function updateAnalysers(time) {
     // analyzer draw code here
     {
         var freqByteData = new Uint8Array(analyserNode.frequencyBinCount);
-        console.log("frequencyBinCount="+analyserNode.frequencyBinCount);
+        // console.log("frequencyBinCount="+analyserNode.frequencyBinCount);
 
         analyserNode.getByteFrequencyData(freqByteData); 
         
@@ -171,9 +171,9 @@ function updateDiffAnalysers(time) {
 
         analyserNode.getByteFrequencyData(freqByteData); 
 
-        for (var i = 0; i < lastFreqByteData.length; i++) {
-            freqByteData[i] -= lastFreqByteData[i];
-        }
+        // for (var i = 0; i < lastFreqByteData.length; i++) {
+        //     freqByteData[i] -= lastFreqByteData[i];
+        // }
 
         // updateCanvas(diffAnalyserContext, freqByteData);
         // return;
@@ -216,6 +216,36 @@ function updateDiffAnalysers(time) {
     
 }
 
+/**
+ * 波形图, 波形图是记录声波强度和时间的关系
+ * 频率是声波强度变化的快慢
+ */
+function updateAudioProcess (e) {
+    // console.log(e);
+    var canvas = document.getElementById("audioProcess");
+    var height = 500;
+    var width = 1024;
+    var g = canvas.getContext("2d");
+
+    //获取输入和输出的数据缓冲区
+    var input=e.inputBuffer.getChannelData(0);
+    var output=e.outputBuffer.getChannelData(0);
+    //将输入数缓冲复制到输出缓冲上
+    // for(var i=0;i<input.length;i++)
+    //     output[i]=input[i];
+    //将缓冲区的数据绘制到Canvas上
+    g.clearRect(0, 0, width, height);
+        
+    g.strokeStyle = '#FF0000';
+    g.beginPath();
+    for(var i=0;i<width;i++) {
+        var offset = (input.length * i / width) | 0;
+        g.lineTo(i, height/2 * input[offset] + height / 2);
+    }
+    g.stroke();
+};
+
+
 function toggleMono() {
     if (audioInput != realAudioInput) {
         audioInput.disconnect();
@@ -240,6 +270,9 @@ function gotStream(stream) {
 //    audioInput = convertToMono( input );
 
     analyserNode = audioContext.createAnalyser();
+    var processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+
     analyserNode.fftSize = 2048;
     inputPoint.connect( analyserNode );
 
@@ -247,10 +280,17 @@ function gotStream(stream) {
 
     zeroGain = audioContext.createGain();
     zeroGain.gain.value = 0.0;
+
     inputPoint.connect( zeroGain );
     zeroGain.connect( audioContext.destination );
+
+    inputPoint.connect( processor );
+    processor.connect(audioContext.destination);
+
     // 更新分析器
     updateAnalysers();
+
+    processor.onaudioprocess = updateAudioProcess;
 }
 
 function drawBuffer( width, height, context, data ) {
